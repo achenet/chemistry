@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Display;
 
 fn main() {
@@ -7,7 +8,7 @@ fn main() {
 // First order of business:
 // balancing equations
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 enum Element {
     H,
     He,
@@ -32,55 +33,59 @@ enum Element {
     // et plus si affinite
 }
 
-#[derive(PartialEq, Eq, Hash, Display)]
-struct Molecule {
-    elements: Vec<Element>,
-    subscripts: Vec<u16>,
+fn is_balanced(
+    reagents: Vec<(u16, HashMap<Element, u16>)>,
+    products: Vec<(u16, HashMap<Element, u16>)>,
+) -> bool {
+    // Initialize
+    let mut reagent_map: HashMap<Element, u16> = HashMap::new();
+    let mut product_map: HashMap<Element, u16> = HashMap::new();
+    for (coef, molecule) in reagents {
+        for (element, subscript) in molecule {
+            let count = reagent_map.entry(element).or_insert(0);
+            *count += coef * subscript
+        }
+    }
+    for (coef, molecule) in products {
+        for (element, subscript) in molecule {
+            let count = product_map.entry(element).or_insert(0);
+            *count += coef * subscript
+        }
+    }
+    for element in reagent_map.keys() {
+        if reagent_map.get(element) != product_map.get(element) {
+            return false;
+        }
+    }
+    true
 }
 
-impl Molecule {
-    fn is_valid(&self) -> bool {
-        self.elements.len() == self.subscripts.len()
+fn create_molecule(elements: Vec<(Element, u16)>) -> HashMap<Element, u16> {
+    let mut molecule: HashMap<Element, u16> = HashMap::new();
+    for (e, sub) in elements {
+        molecule.insert(e, sub);
     }
-
-    fn print(&self) {
-        if !self.is_valid() {
-            println!("invalid molecule");
-        }
-        let mut out = String::new();
-        // TODO improve this for loop
-        for i in (0..self.elements.len()) {
-            out += self.elements[i].to_string();
-            out += self.subscripts[i];
-        }
-        println!("{}", out);
-    }
+    molecule
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Element, Molecule};
+    use crate::create_molecule;
+    use crate::is_balanced;
+    use crate::Element;
+    use std::collections::HashMap;
     #[test]
-    fn test_is_valid() {
-        use std::collections::HashMap;
-        let mut tests = HashMap::new();
-        tests.insert(
-            Molecule {
-                elements: vec![Element::H],
-                subscripts: vec![2],
-            },
-            true,
-        );
-        tests.insert(
-            Molecule {
-                elements: vec![Element::H, Element::He],
-                subscripts: vec![1],
-            },
-            false,
-        );
-
-        for (k, v) in tests {
-            assert_eq!(k.is_valid(), v);
-        }
+    fn test_is_balanced() {
+        let mut methane = HashMap::new();
+        methane.insert(Element::C, 1);
+        methane.insert(Element::H, 4);
+        let mut oxygen = HashMap::new();
+        oxygen.insert(Element::O, 2);
+        let reagents = vec![(1, methane), (4, oxygen)];
+        let products = vec![
+            (1, create_molecule(vec![(Element::C, 1), (Element::O, 2)])),
+            (2, create_molecule(vec![(Element::H, 2), (Element::O, 1)])),
+        ];
+        assert_eq!(is_balanced(reagents, products), true);
     }
 }
