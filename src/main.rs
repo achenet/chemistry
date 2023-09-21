@@ -8,7 +8,7 @@ fn main() {
 // First order of business:
 // balancing equations
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 enum Element {
     H,
     He,
@@ -52,6 +52,8 @@ fn is_balanced(
             *count += coef * subscript
         }
     }
+    println!("reagent map: {:?}", reagent_map);
+    println!("product map: {:?}", product_map);
     for element in reagent_map.keys() {
         if reagent_map.get(element) != product_map.get(element) {
             return false;
@@ -81,7 +83,7 @@ mod tests {
         methane.insert(Element::H, 4);
         let mut oxygen = HashMap::new();
         oxygen.insert(Element::O, 2);
-        let reagents = vec![(1, methane), (4, oxygen)];
+        let reagents = vec![(1, methane), (2, oxygen)];
         let products = vec![
             (1, create_molecule(vec![(Element::C, 1), (Element::O, 2)])),
             (2, create_molecule(vec![(Element::H, 2), (Element::O, 1)])),
