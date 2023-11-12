@@ -71,6 +71,8 @@ type Matrix = Vec<Vec<i32>>;
 
 trait MatrixTrait {
     fn valid(&self) -> bool;
+    fn is_identity_matrix(&self) -> bool;
+    fn is_square(&self) -> bool;
 }
 
 impl MatrixTrait for Matrix {
@@ -87,15 +89,49 @@ impl MatrixTrait for Matrix {
         }
         true
     }
+
+    fn is_identity_matrix(&self) -> bool {
+        if self.len() == 0 {
+            return true;
+        }
+        if !self.is_square() {
+            return false;
+        }
+        for i in 0..self.len() {
+            for j in 0..self.len() {
+                if self[i][j] != 0 || !(i == j && self[i][j] == 1) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    fn is_square(&self) -> bool {
+        if self.len() == 0 {
+            return true;
+        }
+        for row in self {
+            if row.len() != self.len() {
+                return false;
+            }
+        }
+        true
+    }
 }
 
+// FIXME
 fn invert(mut m: Matrix) -> Matrix {
-    m = create_rectangle_matrix_for_inversion(m);
     // Gauss-Jordan elimination
     // find pivot row (if in doubt pick first row)
     // use it to get rid of all elements below
     // rinse and repeat
 
+    if m.len() == 0 {
+        return m;
+    }
+    m = create_rectangle_matrix_for_inversion(m);
+    // TODO this should probably be a loop
     // find pivot row
     let mut pivot = 0;
     for row in 0..m.len() {
@@ -117,6 +153,20 @@ fn invert(mut m: Matrix) -> Matrix {
         for j in 0..m[0].len() {
             m[i][j] = m[i][j] - (m[0][j] * factor);
         }
+    }
+    extract_right_hand_side(m)
+}
+
+fn extract_right_hand_side(mut m: Matrix) -> Matrix {
+    for i in 0..m.len() {
+        // truncate row
+        // FIXME this can be done with list comphrensions/filters or something more elegant
+        let mut new_row = vec![];
+        // WARNING will bug if not a square matrix
+        for j in m.len() / 2..m.len() {
+            new_row.push(m[i][j]);
+        }
+        m[i] = new_row;
     }
     m
 }
@@ -143,7 +193,6 @@ fn create_molecule(elements: Vec<(Element, u16)>) -> HashMap<Element, u16> {
 
 #[cfg(test)]
 mod tests {
-    use crate::Element;
     use crate::*;
     use std::collections::HashMap;
 
@@ -166,8 +215,20 @@ mod tests {
     fn test_invert() {
         let mut test_cases: HashMap<Vec<Vec<i32>>, Vec<Vec<i32>>> = HashMap::new();
         test_cases.insert(vec![vec![1, 0], vec![0, 1]], vec![vec![1, 0], vec![0, 1]]);
-        for (key, value) in test_cases {
-            assert_eq!(invert(key), value);
+        test_cases.insert(vec![], vec![]);
+        test_cases.insert(vec![vec![1, 2], vec![1, 1]], vec![vec![-1, 2], vec![1, -1]]);
+        for (input, expect) in test_cases {
+            assert_eq!(invert(input), expect);
         }
+    }
+
+    #[test]
+    fn test_is_identity_matrix() {
+        let mut test_cases: HashMap<Matrix, bool> = HashMap::new();
+        test_cases.insert(vec![vec![1, 0], vec![0, 1]], true);
+        test_cases.insert(vec![], true);
+        test_cases.insert(vec![vec![1]], true);
+        test_cases.insert(vec![vec![1, 1]], false);
+        test_cases.insert(vec![vec![1, 1], vec![1, 2]], false);
     }
 }
