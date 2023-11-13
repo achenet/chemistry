@@ -230,5 +230,20 @@ mod tests {
         test_cases.insert(vec![vec![1]], true);
         test_cases.insert(vec![vec![1, 1]], false);
         test_cases.insert(vec![vec![1, 1], vec![1, 2]], false);
+        for (input, expect) in test_cases {
+            assert_eq!(input.is_identity_matrix(), expect);
+        }
+    }
+
+    #[test]
+    fn test_extract_right_hand_side() {
+        let mut test_cases: HashMap<Matrix, Matrix> = HashMap::new();
+        test_cases.insert(
+            vec![vec![1, 2, 3, 4], vec![0, 1, 2, 3]],
+            vec![vec![3, 4], vec![2, 3]],
+        );
+        for (input, expect) in test_cases {
+            assert_eq!(extract_right_hand_side(input), expect);
+        }
     }
 }
