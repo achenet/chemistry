@@ -99,7 +99,7 @@ impl MatrixTrait for Matrix {
         }
         for i in 0..self.len() {
             for j in 0..self.len() {
-                if self[i][j] != 0 || !(i == j && self[i][j] == 1) {
+                if self[i][j] != 0 && !(i == j && self[i][j] == 1) {
                     return false;
                 }
             }
@@ -163,7 +163,7 @@ fn extract_right_hand_side(mut m: Matrix) -> Matrix {
         // FIXME this can be done with list comphrensions/filters or something more elegant
         let mut new_row = vec![];
         // WARNING will bug if not a square matrix
-        for j in m.len() / 2..m.len() {
+        for j in (m.len() / 2)..m.len() {
             new_row.push(m[i][j]);
         }
         m[i] = new_row;
@@ -231,7 +231,31 @@ mod tests {
         test_cases.insert(vec![vec![1, 1]], false);
         test_cases.insert(vec![vec![1, 1], vec![1, 2]], false);
         for (input, expect) in test_cases {
+            println!(
+                "input: {:?}, input.is_identity_matrix: {}, expect: {}",
+                input,
+                input.is_identity_matrix(),
+                expect
+            );
             assert_eq!(input.is_identity_matrix(), expect);
+        }
+    }
+
+    #[test]
+    fn test_is_square() {
+        let mut test_cases: HashMap<Matrix, bool> = HashMap::new();
+        test_cases.insert(vec![vec![1, 0], vec![0, 1]], true);
+        test_cases.insert(vec![], true);
+        test_cases.insert(vec![vec![1]], true);
+        test_cases.insert(vec![vec![1, 1]], false);
+        for (input, expect) in test_cases {
+            println!(
+                "input: {:?}, input.is_square: {}, expect: {}",
+                input,
+                input.is_square(),
+                expect
+            );
+            assert_eq!(input.is_square(), expect);
         }
     }
 
