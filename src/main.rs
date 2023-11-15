@@ -160,10 +160,9 @@ fn invert(mut m: Matrix) -> Matrix {
 fn extract_right_hand_side(mut m: Matrix) -> Matrix {
     for i in 0..m.len() {
         // truncate row
-        // FIXME this can be done with list comphrensions/filters or something more elegant
+        // FIXME this can  probably be done with list comphrensions/filters or something more elegant
         let mut new_row = vec![];
-        // WARNING will bug if not a square matrix
-        for j in (m.len() / 2)..m.len() {
+        for j in (m[i].len() / 2)..m[i].len() {
             new_row.push(m[i][j]);
         }
         m[i] = new_row;
@@ -267,7 +266,9 @@ mod tests {
             vec![vec![3, 4], vec![2, 3]],
         );
         for (input, expect) in test_cases {
-            assert_eq!(extract_right_hand_side(input), expect);
+            let got = extract_right_hand_side(input.clone());
+            println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
+            assert_eq!(got, expect);
         }
     }
 }
