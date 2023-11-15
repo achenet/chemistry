@@ -120,6 +120,33 @@ impl MatrixTrait for Matrix {
     }
 }
 
+fn find_pivot_row(m: &Matrix) -> usize {
+    let mut out = 0;
+    let mut index = m[0].lowest_non_zero_index();
+    for i in 0..m.len() {
+        let row = m[i].clone();
+        if row.lowest_non_zero_index() < index {
+            index = row.lowest_non_zero_index();
+            out = i;
+        }
+    }
+    out
+}
+
+trait Row {
+    fn lowest_non_zero_index(&self) -> usize;
+}
+
+impl Row for Vec<i32> {
+    fn lowest_non_zero_index(&self) -> usize {
+        for i in 0..self.len() {
+            if self[i] != 0 {
+                return i;
+            }
+        }
+        self.len()
+    }
+}
 // FIXME
 fn invert(mut m: Matrix) -> Matrix {
     // Gauss-Jordan elimination
@@ -217,7 +244,13 @@ mod tests {
         test_cases.insert(vec![], vec![]);
         test_cases.insert(vec![vec![1, 2], vec![1, 1]], vec![vec![-1, 2], vec![1, -1]]);
         for (input, expect) in test_cases {
-            assert_eq!(invert(input), expect);
+            let original = input.clone();
+            let got = invert(input);
+            println!(
+                "input: {:?}\ngot: {:?}\nexpect: {:?}",
+                original, got, expect
+            );
+            assert_eq!(got, expect);
         }
     }
 
@@ -270,5 +303,15 @@ mod tests {
             println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
             assert_eq!(got, expect);
         }
+    }
+
+    #[test]
+    fn test_find_lowest_nonzero_index() {
+        // TODO
+    }
+
+    #[test]
+    fn test_find_pivot_row() {
+        // TODO
     }
 }
