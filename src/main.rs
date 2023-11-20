@@ -158,33 +158,35 @@ fn invert(mut m: Matrix) -> Matrix {
         return m;
     }
     m = create_rectangle_matrix_for_inversion(m);
-    // TODO this should probably be a loop
-    // find pivot row
-    let mut pivot = 0;
-    for row in 0..m.len() {
-        if m[row][0] == 1 {
-            pivot = row
+    while !extract_right_hand_side(&m).is_identity_matrix() {
+        // find pivot row
+        let mut pivot = 0;
+        for row in 0..m.len() {
+            if m[row][0] == 1 {
+                pivot = row
+            }
+        }
+        // normalize if need be
+        let z = m[pivot][0];
+        for i in 0..m[pivot].len() {
+            m[pivot][i] = m[pivot][i] / z;
+        }
+
+        // swap pivot row with first row
+        (m[0], m[pivot]) = (m[pivot].clone(), m[0].clone());
+
+        for i in 1..m.len() {
+            let factor = m[i][0];
+            for j in 0..m[0].len() {
+                m[i][j] = m[i][j] - (m[0][j] * factor);
+            }
         }
     }
-    // normalize if need be
-    let z = m[pivot][0];
-    for i in 0..m[pivot].len() {
-        m[pivot][i] = m[pivot][i] / z;
-    }
-
-    // swap pivot row with first row
-    (m[0], m[pivot]) = (m[pivot].clone(), m[0].clone());
-
-    for i in 1..m.len() {
-        let factor = m[i][0];
-        for j in 0..m[0].len() {
-            m[i][j] = m[i][j] - (m[0][j] * factor);
-        }
-    }
-    extract_right_hand_side(m)
+    extract_left_hand_side(&m)
 }
 
-fn extract_right_hand_side(mut m: Matrix) -> Matrix {
+fn extract_right_hand_side(m: &Matrix) -> Matrix {
+    let mut out = vec![];
     for i in 0..m.len() {
         // truncate row
         // FIXME this can  probably be done with list comphrensions/filters or something more elegant
@@ -192,9 +194,21 @@ fn extract_right_hand_side(mut m: Matrix) -> Matrix {
         for j in (m[i].len() / 2)..m[i].len() {
             new_row.push(m[i][j]);
         }
-        m[i] = new_row;
+        out.push(new_row);
     }
-    m
+    out
+}
+
+fn extract_left_hand_side(m: &Matrix) -> Matrix {
+    let mut out = vec![];
+    for i in 0..m.len() {
+        let mut new_row = vec![];
+        for j in 0..m[i].len() / 2 {
+            new_row.push(m[i][j]);
+        }
+        out.push(new_row);
+    }
+    out
 }
 
 fn create_rectangle_matrix_for_inversion(mut m: Matrix) -> Matrix {
@@ -299,19 +313,36 @@ mod tests {
             vec![vec![3, 4], vec![2, 3]],
         );
         for (input, expect) in test_cases {
-            let got = extract_right_hand_side(input.clone());
+            let got = extract_right_hand_side(&input);
             println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
             assert_eq!(got, expect);
         }
     }
 
     #[test]
-    fn test_find_lowest_nonzero_index() {
-        // TODO
+    fn test_extract_left_hand_side() {}
+
+    #[test]
+    fn test_lowest_non_zero_index() {
+        let mut test_cases: HashMap<Vec<i32>, usize> = HashMap::new();
+        test_cases.insert(vec![1, 2], 0);
+        test_cases.insert(vec![0, 2], 1);
+        test_cases.insert(vec![0, 0], 2);
+        for (input, expect) in test_cases {
+            let got = input.lowest_non_zero_index();
+            println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
+            assert_eq!(got, expect);
+        }
     }
 
     #[test]
     fn test_find_pivot_row() {
-        // TODO
+        let mut test_cases: HashMap<Matrix, usize> = HashMap::new();
+        test_cases.insert(vec![vec![0, 1], vec![1, 0]], 1);
+        for (input, expect) in test_cases {
+            let got = find_pivot_row(&input);
+            println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
+            assert_eq!(got, expect);
+        }
     }
 }
