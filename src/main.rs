@@ -320,7 +320,18 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_left_hand_side() {}
+    fn test_extract_left_hand_side() {
+        let mut test_cases: HashMap<Matrix, Matrix> = HashMap::new();
+        test_cases.insert(
+            vec![vec![1, 2, 3, 4], vec![0, 1, 2, 3]],
+            vec![vec![1, 2], vec![0, 1]],
+        );
+        for (input, expect) in test_cases {
+            let got = extract_left_hand_side(&input);
+            println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
+            assert_eq!(got, expect);
+        }
+    }
 
     #[test]
     fn test_lowest_non_zero_index() {
