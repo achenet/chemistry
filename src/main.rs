@@ -1,10 +1,12 @@
 #![allow(dead_code)]
+use num_rational::Ratio;
 use std::collections::HashMap;
 
 fn main() {
     println!("Hello, world!");
     // This is going to have to be a web app at some point isn't it?
     // yes, but could we maybe do Erlang/Elixir + Rust instead of pure Rust?
+    println!("{:?}", invert(vec![vec![1, 2], vec![1, 1]]));
 }
 
 // First order of business:
@@ -135,6 +137,7 @@ fn find_pivot_row(m: &Matrix) -> usize {
 
 trait Row {
     fn lowest_non_zero_index(&self) -> usize;
+    fn normalize(&mut self);
 }
 
 impl Row for Vec<i32> {
@@ -146,26 +149,17 @@ impl Row for Vec<i32> {
         }
         self.len()
     }
+
+    fn normalize(&mut self) {}
 }
 // FIXME
 fn invert(mut m: Matrix) -> Matrix {
-    // Gauss-Jordan elimination
-    // find pivot row (if in doubt pick first row)
-    // use it to get rid of all elements below
-    // rinse and repeat
-
     if m.len() == 0 {
         return m;
     }
     m = create_rectangle_matrix_for_inversion(m);
-    while !extract_right_hand_side(&m).is_identity_matrix() {
-        // find pivot row
-        let mut pivot = 0;
-        for row in 0..m.len() {
-            if m[row][0] == 1 {
-                pivot = row
-            }
-        }
+    while !extract_left_hand_side(&m).is_identity_matrix() {
+        let pivot = find_pivot_row(&m);
         // normalize if need be
         let z = m[pivot][0];
         for i in 0..m[pivot].len() {
@@ -181,8 +175,9 @@ fn invert(mut m: Matrix) -> Matrix {
                 m[i][j] = m[i][j] - (m[0][j] * factor);
             }
         }
+        println!("{:?}", m);
     }
-    extract_left_hand_side(&m)
+    extract_right_hand_side(&m)
 }
 
 fn extract_right_hand_side(m: &Matrix) -> Matrix {
@@ -257,6 +252,7 @@ mod tests {
         test_cases.insert(vec![vec![1, 0], vec![0, 1]], vec![vec![1, 0], vec![0, 1]]);
         test_cases.insert(vec![], vec![]);
         test_cases.insert(vec![vec![1, 2], vec![1, 1]], vec![vec![-1, 2], vec![1, -1]]);
+        //        test_cases.insert(vec![vec![1, 2], vec![3, 4]], vec![vec![], vec![]]); TODO refactor to use rationals
         for (input, expect) in test_cases {
             let original = input.clone();
             let got = invert(input);
