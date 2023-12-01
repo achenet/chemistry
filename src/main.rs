@@ -1,12 +1,12 @@
 #![allow(dead_code)]
-use num_rational::Ratio;
 use std::collections::HashMap;
+use std::hash::Hash;
 
 fn main() {
     println!("Hello, world!");
     // This is going to have to be a web app at some point isn't it?
     // yes, but could we maybe do Erlang/Elixir + Rust instead of pure Rust?
-    println!("{:?}", invert(vec![vec![1, 2], vec![1, 1]]));
+    println!("{:?}", invert(vec![vec![1.0, 2.0], vec![1.0, 1.0]]));
 }
 
 // First order of business:
@@ -69,7 +69,46 @@ fn is_balanced(
 // Matrix represents a matrix.
 // each sub vector is a row
 // The element of index i,j is at row i, column j
-type Matrix = Vec<Vec<i32>>;
+type Matrix = Vec<Vec<f32>>;
+
+#[derive(Debug, PartialEq, Clone)]
+struct Key {
+    matrix: Vec<Vec<f32>>,
+}
+
+impl Eq for Key {
+    // TODO
+}
+
+impl Hash for Key {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // TODO
+    }
+}
+// TODO
+// impl Debug for Matrix {}
+
+#[derive(Debug, PartialEq, Clone)]
+struct RowKey {
+    row: Vec<f32>,
+}
+
+impl Eq for RowKey {}
+
+impl Hash for RowKey {
+    fn hash_slice<H: std::hash::Hasher>(data: &[Self], state: &mut H)
+    where
+        Self: Sized,
+    {
+        for piece in data {
+            piece.hash(state)
+        }
+    }
+
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        todo!()
+    }
+}
 
 trait MatrixTrait {
     fn valid(&self) -> bool;
@@ -101,7 +140,7 @@ impl MatrixTrait for Matrix {
         }
         for i in 0..self.len() {
             for j in 0..self.len() {
-                if self[i][j] != 0 && !(i == j && self[i][j] == 1) {
+                if self[i][j] != 0.0 && !(i == j && self[i][j] == 1.0) {
                     return false;
                 }
             }
@@ -140,43 +179,46 @@ trait Row {
     fn normalize(&mut self);
 }
 
-impl Row for Vec<i32> {
+impl Row for Vec<f32> {
     fn lowest_non_zero_index(&self) -> usize {
         for i in 0..self.len() {
-            if self[i] != 0 {
+            if self[i] != 0.0 {
                 return i;
             }
         }
         self.len()
     }
 
-    fn normalize(&mut self) {}
+    fn normalize(&mut self) {
+        let factor = self[self.lowest_non_zero_index()];
+        for i in 0..self.len() {
+            self[i] /= factor;
+        }
+    }
 }
-// FIXME
 fn invert(mut m: Matrix) -> Matrix {
     if m.len() == 0 {
         return m;
     }
     m = create_rectangle_matrix_for_inversion(m);
-    while !extract_left_hand_side(&m).is_identity_matrix() {
-        let pivot = find_pivot_row(&m);
-        // normalize if need be
-        let z = m[pivot][0];
-        for i in 0..m[pivot].len() {
-            m[pivot][i] = m[pivot][i] / z;
-        }
+    // FIXME
+    // this can probably be a finite for loop,
+    // that does 2 * m.len() iterations
+    // no reason to have an infinte loop
+    // or perhaps to loops of m.len()
 
-        // swap pivot row with first row
-        (m[0], m[pivot]) = (m[pivot].clone(), m[0].clone());
-
-        for i in 1..m.len() {
-            let factor = m[i][0];
-            for j in 0..m[0].len() {
-                m[i][j] = m[i][j] - (m[0][j] * factor);
+    for i in 0..m.len() {
+        println!("m: {:?}", m);
+        println!("row: {}", i);
+        m[i].normalize();
+        for j in i + 1..m.len() {
+            for k in 0..m[j].len() {
+                m[j][k] -= m[i][k];
             }
+            println!("row {} after, substraction: {:?}", j, m[j]);
         }
-        println!("{:?}", m);
-    }
+    } // this algo will *FAIL* on certain cases, but still beats previous one.
+
     extract_right_hand_side(&m)
 }
 
@@ -211,7 +253,7 @@ fn create_rectangle_matrix_for_inversion(mut m: Matrix) -> Matrix {
     // double the number of columns
     for i in 0..m.len() {
         for j in 0..columns {
-            let value = if i == j { 1 } else { 0 };
+            let value = if i == j { 1.0 } else { 0.0 };
             m[i].push(value);
         }
     }
@@ -248,14 +290,24 @@ mod tests {
 
     #[test]
     fn test_invert() {
-        let mut test_cases: HashMap<Vec<Vec<i32>>, Vec<Vec<i32>>> = HashMap::new();
-        test_cases.insert(vec![vec![1, 0], vec![0, 1]], vec![vec![1, 0], vec![0, 1]]);
-        test_cases.insert(vec![], vec![]);
-        test_cases.insert(vec![vec![1, 2], vec![1, 1]], vec![vec![-1, 2], vec![1, -1]]);
-        //        test_cases.insert(vec![vec![1, 2], vec![3, 4]], vec![vec![], vec![]]); TODO refactor to use rationals
+        let mut test_cases: HashMap<Key, Vec<Vec<f32>>> = HashMap::new();
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0, 0.0], vec![0.0, 1.0]],
+            },
+            vec![vec![1.0, 0.0], vec![0.0, 1.0]],
+        );
+        test_cases.insert(Key { matrix: vec![] }, vec![]);
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0, 2.0], vec![1.0, 1.0]],
+            },
+            vec![vec![-1.0, 2.0], vec![1.0, -1.0]],
+        );
+        //        test_cases.insert(vec![vec![1, 2], vec![3, 4]], vec![vec![], vec![]]); TODO refactor to use floats
         for (input, expect) in test_cases {
             let original = input.clone();
-            let got = invert(input);
+            let got = invert(input.matrix);
             println!(
                 "input: {:?}\ngot: {:?}\nexpect: {:?}",
                 original, got, expect
@@ -266,50 +318,87 @@ mod tests {
 
     #[test]
     fn test_is_identity_matrix() {
-        let mut test_cases: HashMap<Matrix, bool> = HashMap::new();
-        test_cases.insert(vec![vec![1, 0], vec![0, 1]], true);
-        test_cases.insert(vec![], true);
-        test_cases.insert(vec![vec![1]], true);
-        test_cases.insert(vec![vec![1, 1]], false);
-        test_cases.insert(vec![vec![1, 1], vec![1, 2]], false);
+        let mut test_cases: HashMap<Key, bool> = HashMap::new();
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0, 0.0], vec![0.0, 1.0]],
+            },
+            true,
+        );
+        test_cases.insert(Key { matrix: vec![] }, true);
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0]],
+            },
+            true,
+        );
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0, 1.0]],
+            },
+            false,
+        );
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0, 1.0], vec![1.0, 2.0]],
+            },
+            false,
+        );
         for (input, expect) in test_cases {
             println!(
                 "input: {:?}, input.is_identity_matrix: {}, expect: {}",
                 input,
-                input.is_identity_matrix(),
+                input.matrix.is_identity_matrix(),
                 expect
             );
-            assert_eq!(input.is_identity_matrix(), expect);
+            assert_eq!(input.matrix.is_identity_matrix(), expect);
         }
     }
 
     #[test]
     fn test_is_square() {
-        let mut test_cases: HashMap<Matrix, bool> = HashMap::new();
-        test_cases.insert(vec![vec![1, 0], vec![0, 1]], true);
-        test_cases.insert(vec![], true);
-        test_cases.insert(vec![vec![1]], true);
-        test_cases.insert(vec![vec![1, 1]], false);
+        let mut test_cases: HashMap<Key, bool> = HashMap::new();
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0, 0.0], vec![0.0, 1.0]],
+            },
+            true,
+        );
+        test_cases.insert(Key { matrix: vec![] }, true);
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0]],
+            },
+            true,
+        );
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![1.0, 1.0]],
+            },
+            false,
+        );
         for (input, expect) in test_cases {
             println!(
                 "input: {:?}, input.is_square: {}, expect: {}",
                 input,
-                input.is_square(),
+                input.matrix.is_square(),
                 expect
             );
-            assert_eq!(input.is_square(), expect);
+            assert_eq!(input.matrix.is_square(), expect);
         }
     }
 
     #[test]
     fn test_extract_right_hand_side() {
-        let mut test_cases: HashMap<Matrix, Matrix> = HashMap::new();
+        let mut test_cases: HashMap<Key, Matrix> = HashMap::new();
         test_cases.insert(
-            vec![vec![1, 2, 3, 4], vec![0, 1, 2, 3]],
-            vec![vec![3, 4], vec![2, 3]],
+            Key {
+                matrix: vec![vec![1.0, 2.0, 3.0, 4.0], vec![0.0, 1.0, 2.0, 3.0]],
+            },
+            vec![vec![3.0, 4.0], vec![2.0, 3.0]],
         );
         for (input, expect) in test_cases {
-            let got = extract_right_hand_side(&input);
+            let got = extract_right_hand_side(&input.matrix);
             println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
             assert_eq!(got, expect);
         }
@@ -317,26 +406,46 @@ mod tests {
 
     #[test]
     fn test_extract_left_hand_side() {
-        let mut test_cases: HashMap<Matrix, Matrix> = HashMap::new();
+        let mut test_cases: HashMap<Key, Matrix> = HashMap::new();
         test_cases.insert(
-            vec![vec![1, 2, 3, 4], vec![0, 1, 2, 3]],
-            vec![vec![1, 2], vec![0, 1]],
+            Key {
+                matrix: vec![vec![1.0, 2.0, 3.0, 4.0], vec![0.0, 1.0, 2.0, 3.0]],
+            },
+            vec![vec![1.0, 2.0], vec![0.0, 1.0]],
         );
         for (input, expect) in test_cases {
-            let got = extract_left_hand_side(&input);
-            println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
+            let got = extract_left_hand_side(&input.matrix);
+            println!(
+                "input: {:?}\ngot: {:?}\nexpect: {:?}",
+                input.matrix, got, expect
+            );
             assert_eq!(got, expect);
         }
     }
 
     #[test]
     fn test_lowest_non_zero_index() {
-        let mut test_cases: HashMap<Vec<i32>, usize> = HashMap::new();
-        test_cases.insert(vec![1, 2], 0);
-        test_cases.insert(vec![0, 2], 1);
-        test_cases.insert(vec![0, 0], 2);
+        let mut test_cases: HashMap<RowKey, usize> = HashMap::new();
+        test_cases.insert(
+            RowKey {
+                row: vec![1.0, 2.0],
+            },
+            0,
+        );
+        test_cases.insert(
+            RowKey {
+                row: vec![0.0, 2.0],
+            },
+            1,
+        );
+        test_cases.insert(
+            RowKey {
+                row: vec![0.0, 0.0],
+            },
+            2,
+        );
         for (input, expect) in test_cases {
-            let got = input.lowest_non_zero_index();
+            let got = input.row.lowest_non_zero_index();
             println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
             assert_eq!(got, expect);
         }
@@ -344,10 +453,15 @@ mod tests {
 
     #[test]
     fn test_find_pivot_row() {
-        let mut test_cases: HashMap<Matrix, usize> = HashMap::new();
-        test_cases.insert(vec![vec![0, 1], vec![1, 0]], 1);
+        let mut test_cases: HashMap<Key, usize> = HashMap::new();
+        test_cases.insert(
+            Key {
+                matrix: vec![vec![0.0, 1.0], vec![1.0, 0.0]],
+            },
+            1,
+        );
         for (input, expect) in test_cases {
-            let got = find_pivot_row(&input);
+            let got = find_pivot_row(&input.matrix);
             println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
             assert_eq!(got, expect);
         }
