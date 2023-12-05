@@ -106,7 +106,10 @@ impl Hash for RowKey {
     }
 
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        todo!()
+        for n in &self.row {
+            state.write_i32(*n as i32);
+        }
+        state.finish();
     }
 }
 
@@ -114,6 +117,9 @@ trait MatrixTrait {
     fn valid(&self) -> bool;
     fn is_identity_matrix(&self) -> bool;
     fn is_square(&self) -> bool;
+    fn find_pivot_row(&self) -> usize;
+    fn extract_right_hand_side(&self) -> Matrix;
+    fn extract_left_hand_side(&self) -> Matrix;
 }
 
 impl MatrixTrait for Matrix {
@@ -159,19 +165,44 @@ impl MatrixTrait for Matrix {
         }
         true
     }
-}
 
-fn find_pivot_row(m: &Matrix) -> usize {
-    let mut out = 0;
-    let mut index = m[0].lowest_non_zero_index();
-    for i in 0..m.len() {
-        let row = m[i].clone();
-        if row.lowest_non_zero_index() < index {
-            index = row.lowest_non_zero_index();
-            out = i;
+    fn find_pivot_row(&self) -> usize {
+        let mut out = 0;
+        let mut index = self[0].lowest_non_zero_index();
+        for i in 0..self.len() {
+            let row = self[i].clone();
+            if row.lowest_non_zero_index() < index {
+                index = row.lowest_non_zero_index();
+                out = i;
+            }
         }
+        out
     }
-    out
+    fn extract_right_hand_side(&self) -> Matrix {
+        let mut out = vec![];
+        for i in 0..self.len() {
+            // truncate row
+            // FIXME this can  probably be done with list comphrensions/filters or something more elegant
+            let mut new_row = vec![];
+            for j in (self[i].len() / 2)..self[i].len() {
+                new_row.push(self[i][j]);
+            }
+            out.push(new_row);
+        }
+        out
+    }
+
+    fn extract_left_hand_side(&self) -> Matrix {
+        let mut out = vec![];
+        for i in 0..self.len() {
+            let mut new_row = vec![];
+            for j in 0..self[i].len() / 2 {
+                new_row.push(self[i][j]);
+            }
+            out.push(new_row);
+        }
+        out
+    }
 }
 
 trait Row {
@@ -201,51 +232,11 @@ fn invert(mut m: Matrix) -> Matrix {
         return m;
     }
     m = create_rectangle_matrix_for_inversion(m);
+
     // FIXME
-    // this can probably be a finite for loop,
-    // that does 2 * m.len() iterations
-    // no reason to have an infinte loop
-    // or perhaps to loops of m.len()
+    let pivot = m.find_pivot_row();
 
-    for i in 0..m.len() {
-        println!("m: {:?}", m);
-        println!("row: {}", i);
-        m[i].normalize();
-        for j in i + 1..m.len() {
-            for k in 0..m[j].len() {
-                m[j][k] -= m[i][k];
-            }
-            println!("row {} after, substraction: {:?}", j, m[j]);
-        }
-    } // this algo will *FAIL* on certain cases, but still beats previous one.
-
-    extract_right_hand_side(&m)
-}
-
-fn extract_right_hand_side(m: &Matrix) -> Matrix {
-    let mut out = vec![];
-    for i in 0..m.len() {
-        // truncate row
-        // FIXME this can  probably be done with list comphrensions/filters or something more elegant
-        let mut new_row = vec![];
-        for j in (m[i].len() / 2)..m[i].len() {
-            new_row.push(m[i][j]);
-        }
-        out.push(new_row);
-    }
-    out
-}
-
-fn extract_left_hand_side(m: &Matrix) -> Matrix {
-    let mut out = vec![];
-    for i in 0..m.len() {
-        let mut new_row = vec![];
-        for j in 0..m[i].len() / 2 {
-            new_row.push(m[i][j]);
-        }
-        out.push(new_row);
-    }
-    out
+    m.extract_right_hand_side()
 }
 
 fn create_rectangle_matrix_for_inversion(mut m: Matrix) -> Matrix {
@@ -398,7 +389,7 @@ mod tests {
             vec![vec![3.0, 4.0], vec![2.0, 3.0]],
         );
         for (input, expect) in test_cases {
-            let got = extract_right_hand_side(&input.matrix);
+            let got = input.matrix.extract_right_hand_side();
             println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
             assert_eq!(got, expect);
         }
@@ -414,7 +405,7 @@ mod tests {
             vec![vec![1.0, 2.0], vec![0.0, 1.0]],
         );
         for (input, expect) in test_cases {
-            let got = extract_left_hand_side(&input.matrix);
+            let got = input.matrix.extract_left_hand_side();
             println!(
                 "input: {:?}\ngot: {:?}\nexpect: {:?}",
                 input.matrix, got, expect
@@ -461,9 +452,41 @@ mod tests {
             1,
         );
         for (input, expect) in test_cases {
-            let got = find_pivot_row(&input.matrix);
+            let got = input.matrix.find_pivot_row();
             println!("input: {:?}\ngot: {:?}\nexpect: {:?}", input, got, expect);
             assert_eq!(got, expect);
+        }
+    }
+
+    struct RowTestCase {
+        input: Vec<f32>,
+        expect: Vec<f32>,
+    }
+
+    #[test]
+    fn test_normalize() {
+        let test_cases: Vec<RowTestCase> = vec![
+            RowTestCase {
+                input: vec![2.0, 2.0],
+                expect: vec![1.0, 1.0],
+            },
+            RowTestCase {
+                input: vec![1.0, 2.0],
+                expect: vec![1.0, 2.0],
+            },
+            RowTestCase {
+                input: vec![0.0, 2.0, 1.0],
+                expect: vec![0.0, 1.0, 0.5],
+            },
+        ];
+        for tc in test_cases {
+            let mut got = tc.input.clone();
+            got.normalize();
+            println!(
+                "input: {:?}\ngot: {:?}\nexpect: {:?}",
+                tc.input, got, tc.expect
+            );
+            assert_eq!(got, tc.expect);
         }
     }
 }
