@@ -120,6 +120,8 @@ trait MatrixTrait {
     fn find_pivot_row(&self) -> usize;
     fn extract_right_hand_side(&self) -> Matrix;
     fn extract_left_hand_side(&self) -> Matrix;
+    fn triangularize(&mut self);
+    fn is_triangular(&self) -> bool;
 }
 
 impl MatrixTrait for Matrix {
@@ -202,6 +204,22 @@ impl MatrixTrait for Matrix {
             out.push(new_row);
         }
         out
+    }
+
+    fn triangularize(&mut self) {
+        if self.len() < 2 {
+            return;
+        }
+        let pivot = self.find_pivot_row();
+        // swap pivot row with first row;
+        let tmp = self[0].clone();
+        self[0] = self[pivot].clone();
+        self[pivot] = tmp;
+        todo!();
+    }
+
+    fn is_triangular(&self) -> bool {
+        true
     }
 }
 
@@ -482,6 +500,27 @@ mod tests {
         for tc in test_cases {
             let mut got = tc.input.clone();
             got.normalize();
+            println!(
+                "input: {:?}\ngot: {:?}\nexpect: {:?}",
+                tc.input, got, tc.expect
+            );
+            assert_eq!(got, tc.expect);
+        }
+    }
+
+    struct IsTriangularTestCase {
+        input: Matrix,
+        expect: bool,
+    }
+
+    #[test]
+    fn test_is_triangular() {
+        let test_cases: Vec<IsTriangularTestCase> = vec![IsTriangularTestCase {
+            input: vec![],
+            expect: true,
+        }];
+        for tc in test_cases {
+            let got = tc.input.is_triangular();
             println!(
                 "input: {:?}\ngot: {:?}\nexpect: {:?}",
                 tc.input, got, tc.expect
