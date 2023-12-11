@@ -219,6 +219,17 @@ impl MatrixTrait for Matrix {
     }
 
     fn is_triangular(&self) -> bool {
+        if !self.is_square() {
+            return false;
+        }
+        for i in 1..self.len() {
+            for j in 0..i {
+                if self[i][j] != 0.0 {
+                    return false;
+                }
+            }
+        }
+
         true
     }
 }
@@ -515,10 +526,20 @@ mod tests {
 
     #[test]
     fn test_is_triangular() {
-        let test_cases: Vec<IsTriangularTestCase> = vec![IsTriangularTestCase {
-            input: vec![],
-            expect: true,
-        }];
+        let test_cases: Vec<IsTriangularTestCase> = vec![
+            IsTriangularTestCase {
+                input: vec![],
+                expect: true,
+            },
+            IsTriangularTestCase {
+                input: vec![vec![1.0, 0.0], vec![0.0, 1.0]],
+                expect: true,
+            },
+            IsTriangularTestCase {
+                input: vec![vec![1.0, 0.0], vec![1.0, 1.0]],
+                expect: false,
+            },
+        ];
         for tc in test_cases {
             let got = tc.input.is_triangular();
             println!(
