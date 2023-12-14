@@ -6,7 +6,17 @@ fn main() {
     println!("Hello, world!");
     // This is going to have to be a web app at some point isn't it?
     // yes, but could we maybe do Erlang/Elixir + Rust instead of pure Rust?
-    println!("{:?}", invert(vec![vec![1.0, 2.0], vec![1.0, 1.0]]));
+    //    println!("{:?}", invert(vec![vec![1.0, 2.0], vec![1.0, 1.0]]));
+    let mut test = vec![vec![1.0, 2.0], vec![1.0, 1.0]];
+    test.triangularize();
+    println!("Triangularize [[1 2], [1 1]]: {:?}", test.clone());
+    test = vec![
+        vec![1.0, 2.0, 1.0],
+        vec![1.0, 1.0, 0.0],
+        vec![0.0, 3.0, 2.0],
+    ];
+    test.triangularize();
+    println!("Triangularize [[1 2 1], [1 1 0], [0 3 2]]: {:?}", test);
 }
 
 // First order of business:
@@ -82,7 +92,12 @@ impl Eq for Key {
 
 impl Hash for Key {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // TODO
+        for row in &self.matrix {
+            for n in row {
+                state.write_i32(*n as i32);
+            }
+            state.finish();
+        }
     }
 }
 // TODO
@@ -122,6 +137,8 @@ trait MatrixTrait {
     fn extract_left_hand_side(&self) -> Matrix;
     fn triangularize(&mut self);
     fn is_triangular(&self) -> bool;
+    fn extract_submatrix(&self) -> Matrix;
+    fn replace_submatrix(&mut self, submatrix: Matrix);
 }
 
 impl MatrixTrait for Matrix {
@@ -210,12 +227,24 @@ impl MatrixTrait for Matrix {
         if self.len() < 2 {
             return;
         }
-        let pivot = self.find_pivot_row();
-        // swap pivot row with first row;
-        let tmp = self[0].clone();
-        self[0] = self[pivot].clone();
-        self[pivot] = tmp;
-        todo!();
+        while !self.is_triangular() {
+            let pivot = self.find_pivot_row();
+            let tmp = self[0].clone();
+            self[0] = self[pivot].clone();
+            self[pivot] = tmp;
+            for i in 1..self.len() {
+                let factor = self[i][0] / self[0][0];
+                for j in 0..self[i].len() {
+                    self[i][j] -= self[0][j] * factor;
+                }
+            }
+            // create submatrix
+            let mut sub_matrix = self.extract_submatrix();
+            // triangularize that
+            sub_matrix.triangularize();
+            self.replace_submatrix(sub_matrix);
+            println!("{:?}", self);
+        }
     }
 
     fn is_triangular(&self) -> bool {
@@ -229,8 +258,27 @@ impl MatrixTrait for Matrix {
                 }
             }
         }
-
         true
+    }
+
+    fn extract_submatrix(&self) -> Matrix {
+        let mut out = vec![];
+        for i in 1..self.len() {
+            let mut row = vec![];
+            for j in 1..self[i].len() {
+                row.push(self[i][j]);
+            }
+            out.push(row);
+        }
+        out
+    }
+
+    fn replace_submatrix(&mut self, submatrix: Matrix) {
+        for i in 1..self.len() {
+            for j in 1..self.len() {
+                self[i][j] = submatrix[i - 1][j - 1];
+            }
+        }
     }
 }
 
@@ -263,7 +311,7 @@ fn invert(mut m: Matrix) -> Matrix {
     m = create_rectangle_matrix_for_inversion(m);
 
     // FIXME
-    let pivot = m.find_pivot_row();
+    // let pivot = m.find_pivot_row();
 
     m.extract_right_hand_side()
 }
@@ -547,6 +595,27 @@ mod tests {
                 tc.input, got, tc.expect
             );
             assert_eq!(got, tc.expect);
+        }
+    }
+
+    struct MatrixTestCase {
+        input: Matrix,
+        expect: Matrix,
+    }
+
+    #[test]
+    fn test_triangularize() {
+        let test_cases: Vec<Matrix> = vec![vec![
+            vec![1.0, 1.0, 1.0],
+            vec![2.0, 1.0, 2.0],
+            vec![0.0, 0.0, 1.0],
+        ]];
+
+        for tc in test_cases {
+            let mut got = tc.clone();
+            got.triangularize();
+            println!("input: {:?}\ngot: {:?}\n", tc, got,);
+            assert_eq!(got.is_triangular(), true);
         }
     }
 }
