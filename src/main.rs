@@ -336,7 +336,7 @@ fn invert(mut m: Matrix) -> Matrix {
         m = m.swap_rows(0, pivot);
         m[0].normalize();
         for i in 1..m.len() {
-            let factor = m[i][0] / m[0][0]; // TODO:: this line is broken
+            let factor = m[i].find_factor();
             for j in 0..m[i].len() {
                 m[i][j] -= m[0][j] * factor;
             }
@@ -344,16 +344,25 @@ fn invert(mut m: Matrix) -> Matrix {
         println!("{:?}", m);
     }
     while !m.extract_left_hand_side().is_identity_matrix() {
+        let old = m.clone();
         let mut i = m.len() - 1;
-        while i > 0 {
+        while i >= 0 {
+            // FIXME:: use an iterator for this bit
             // take row i
             // subtract it from every row above
             i -= 1;
             let mut k = i;
-            while k > 0 {
-                for j in 0..m[i].len() {}
+            while k >= 0 {
+                let factor = m[k].find_factor();
+                for j in 0..m[i].len() {
+                    m[k][j] -= m[i][j] * factor;
+                }
                 k -= 1;
             }
+        }
+        println!("i: {}, {:?}", i, m);
+        if old == m {
+            break; // avoid infinite loops
         }
     }
 
@@ -658,15 +667,35 @@ mod tests {
         for tc in test_cases {
             let mut got = tc.clone();
             got.triangularize();
-            println!("input: {:?}\ngot: {:?}\n", tc, got,);
+            println!("input: {:?}\ngot: {:?}\n", tc, got);
             assert_eq!(got.is_triangular(), true);
         }
     }
 
-    struct FindFactorTestCase {}
+    struct FindFactorTestCase {
+        input: Vec<f32>,
+        expect: f32,
+    }
 
     #[test]
     fn test_find_factor() {
-        let test_cases: Vec<FindFactorTestCase> = vec![];
+        let test_cases: Vec<FindFactorTestCase> = vec![
+            FindFactorTestCase {
+                input: vec![0.0, 1.0],
+                expect: 1.0,
+            },
+            FindFactorTestCase {
+                input: vec![0.0, 0.0, -1.5],
+                expect: -1.5,
+            },
+        ];
+        for tc in test_cases {
+            let got = tc.input.find_factor();
+            println!(
+                "input: {:?}\ngot: {}\nexpect: {}\n",
+                tc.input, got, tc.expect
+            );
+            assert_eq!(got, tc.expect);
+        }
     }
 }
