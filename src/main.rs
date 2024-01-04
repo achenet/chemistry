@@ -8,15 +8,16 @@ fn main() {
     // yes, but could we maybe do Erlang/Elixir + Rust instead of pure Rust?
     //    println!("{:?}", invert(vec![vec![1.0, 2.0], vec![1.0, 1.0]]));
     let mut test = vec![vec![1.0, 2.0], vec![1.0, 1.0]];
-    test.triangularize();
-    println!("Triangularize [[1 2], [1 1]]: {:?}", test.clone());
-    test = vec![
-        vec![1.0, 2.0, 1.0],
-        vec![1.0, 1.0, 0.0],
-        vec![0.0, 3.0, 2.0],
-    ];
-    test.triangularize();
-    println!("Triangularize [[1 2 1], [1 1 0], [0 3 2]]: {:?}", test);
+    // test.triangularize();
+    // println!("Triangularize [[1 2], [1 1]]: {:?}", test.clone());
+    // test = vec![
+    //     vec![1.0, 2.0, 1.0],
+    //     vec![1.0, 1.0, 0.0],
+    //     vec![0.0, 3.0, 2.0],
+    // ];
+    // test.triangularize();
+    // println!("Triangularize [[1 2 1], [1 1 0], [0 3 2]]: {:?}", test);
+    println!("{:?}", invert(test));
 }
 
 // First order of business:
@@ -139,6 +140,7 @@ trait MatrixTrait {
     fn is_triangular(&self) -> bool;
     fn extract_submatrix(&self) -> Matrix;
     fn replace_submatrix(&mut self, submatrix: Matrix);
+    fn swap_rows(&self, i: usize, j: usize) -> Matrix;
 }
 
 impl MatrixTrait for Matrix {
@@ -280,11 +282,20 @@ impl MatrixTrait for Matrix {
             }
         }
     }
+
+    fn swap_rows(&self, i: usize, j: usize) -> Matrix {
+        let mut new = self.clone();
+        let tmp = self[i].clone();
+        new[i] = self[j].clone();
+        new[j] = tmp;
+        new
+    }
 }
 
 trait Row {
     fn lowest_non_zero_index(&self) -> usize;
     fn normalize(&mut self);
+    fn find_factor(&self) -> f32;
 }
 
 impl Row for Vec<f32> {
@@ -303,15 +314,48 @@ impl Row for Vec<f32> {
             self[i] /= factor;
         }
     }
+
+    fn find_factor(&self) -> f32 {
+        let i = self.lowest_non_zero_index();
+        self[i]
+    }
 }
+
 fn invert(mut m: Matrix) -> Matrix {
     if m.len() == 0 {
         return m;
     }
+    if m.len() == 1 {
+        return vec![vec![1.0 / m[0][0]]];
+    }
     m = create_rectangle_matrix_for_inversion(m);
 
-    // FIXME
-    // let pivot = m.find_pivot_row();
+    // TODO::FIXME
+    while !m.extract_left_hand_side().is_triangular() {
+        let pivot = m.find_pivot_row();
+        m = m.swap_rows(0, pivot);
+        m[0].normalize();
+        for i in 1..m.len() {
+            let factor = m[i][0] / m[0][0]; // TODO:: this line is broken
+            for j in 0..m[i].len() {
+                m[i][j] -= m[0][j] * factor;
+            }
+        }
+        println!("{:?}", m);
+    }
+    while !m.extract_left_hand_side().is_identity_matrix() {
+        let mut i = m.len() - 1;
+        while i > 0 {
+            // take row i
+            // subtract it from every row above
+            i -= 1;
+            let mut k = i;
+            while k > 0 {
+                for j in 0..m[i].len() {}
+                k -= 1;
+            }
+        }
+    }
 
     m.extract_right_hand_side()
 }
@@ -617,5 +661,12 @@ mod tests {
             println!("input: {:?}\ngot: {:?}\n", tc, got,);
             assert_eq!(got.is_triangular(), true);
         }
+    }
+
+    struct FindFactorTestCase {}
+
+    #[test]
+    fn test_find_factor() {
+        let test_cases: Vec<FindFactorTestCase> = vec![];
     }
 }
