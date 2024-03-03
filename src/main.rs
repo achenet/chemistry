@@ -330,7 +330,7 @@ fn invert(mut m: Matrix) -> Matrix {
     }
     m = create_rectangle_matrix_for_inversion(m);
 
-    // TODO::FIXME
+    // FIXME
     while !m.extract_left_hand_side().is_triangular() {
         let pivot = m.find_pivot_row();
         m = m.swap_rows(0, pivot);
@@ -345,22 +345,23 @@ fn invert(mut m: Matrix) -> Matrix {
     }
     while !m.extract_left_hand_side().is_identity_matrix() {
         let old = m.clone();
-        let mut i = m.len() - 1;
-        while i >= 0 {
-            // FIXME:: use an iterator for this bit
+        let  l = 0..m.len() ;
+        let b: Vec<usize> = l.map(|x| m.len() -1 -x).collect();
+            println!("b:{:?}", b);
+        for i in b {
             // take row i
             // subtract it from every row above
-            i -= 1;
-            let mut k = i;
-            while k >= 0 {
+            let n = 1..i+1;
+            let c: Vec<usize> = n.map(|x| i - x).collect();
+            println!("c:{:?}", c);
+            for k in c {
                 let factor = m[k].find_factor();
                 for j in 0..m[i].len() {
                     m[k][j] -= m[i][j] * factor;
                 }
-                k -= 1;
             }
+        println!("i: {}\nm: {:?}", i, m);
         }
-        println!("i: {}, {:?}", i, m);
         if old == m {
             break; // avoid infinite loops
         }
